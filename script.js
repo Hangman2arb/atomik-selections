@@ -279,25 +279,74 @@
   setInterval(tickClock, 1000);
 
   /* ------------------------------------------------------------
-     7. SIGNAL FORM — fake-transmit with typed ack
+     7. SIGNAL FORM — POST to /api/subscribe with typed ack
      ------------------------------------------------------------ */
   const form = $("#signal");
   const ack = $("#signal-ack");
+  const btn = $("#signal-btn");
+
+  const MESSAGES = {
+    sending:  { text: "◌ TRANSMITTING SIGNAL ···",                  color: "var(--cyan)"     },
+    invalid:  { text: "✕ FREQUENCY INVALID · CHECK SIGNAL",         color: "var(--pink-hot)" },
+    new:      { text: "◉ SIGNAL LOCKED · TRANSMISSION QUEUED",      color: "var(--cyan)"     },
+    already:  { text: "◉ ALREADY IN OUR ARCHIVES · STAY TUNED",     color: "var(--violet-hot)" },
+    rate:     { text: "✕ TOO MANY ATTEMPTS · WAIT A FEW MINUTES",   color: "var(--pink-hot)" },
+    bot:      { text: "✕ INTERFERENCE DETECTED · TRY AGAIN",        color: "var(--pink-hot)" },
+    error:    { text: "✕ TRANSMISSION FAILED · TRY AGAIN LATER",    color: "var(--pink-hot)" },
+  };
+
   if (form && ack) {
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const input = form.querySelector("input[type=email]");
-      const value = (input.value || "").trim();
-      const valid = /.+@.+\..+/.test(value);
+      const input = form.querySelector("input[name=email]");
+      const honey = form.querySelector("input[name=h_orbit]");
+      const email = (input.value || "").trim();
+      const valid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
+
       if (!valid) {
-        typeOut(ack, "✕ FREQUENCY INVALID · CHECK SIGNAL", "var(--pink-hot)");
+        typeOut(ack, MESSAGES.invalid.text, MESSAGES.invalid.color);
         return;
       }
-      // pretend we sent it; clear input
-      input.value = "";
-      typeOut(ack, "◉ SIGNAL LOCKED · TRANSMISSION QUEUED", "var(--cyan)");
+
+      btn?.setAttribute("data-loading", "true");
+      typeOut(ack, MESSAGES.sending.text, MESSAGES.sending.color);
+
+      try {
+        const r = await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            h_orbit: honey?.value || "",
+          }),
+        });
+
+        const data = await r.json().catch(() => ({}));
+        const status = data?.status || "error";
+
+        if (status === "new") {
+          input.value = "";
+          typeOut(ack, MESSAGES.new.text, MESSAGES.new.color);
+        } else if (status === "already") {
+          input.value = "";
+          typeOut(ack, MESSAGES.already.text, MESSAGES.already.color);
+        } else if (status === "invalid") {
+          typeOut(ack, MESSAGES.invalid.text, MESSAGES.invalid.color);
+        } else if (status === "blocked" && data?.reason === "rate_limit") {
+          typeOut(ack, MESSAGES.rate.text, MESSAGES.rate.color);
+        } else if (status === "blocked") {
+          typeOut(ack, MESSAGES.bot.text, MESSAGES.bot.color);
+        } else {
+          typeOut(ack, MESSAGES.error.text, MESSAGES.error.color);
+        }
+      } catch {
+        typeOut(ack, MESSAGES.error.text, MESSAGES.error.color);
+      } finally {
+        btn?.removeAttribute("data-loading");
+      }
     });
   }
+
   function typeOut(el, text, color) {
     el.style.color = color;
     el.textContent = "";

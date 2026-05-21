@@ -674,6 +674,35 @@ input { font: inherit; color: inherit; }
   text-transform: uppercase;
 }
 
+/* Honeypot — visually & absolutely hidden, but reachable enough for bots */
+.hp {
+  position: absolute !important;
+  left: -10000px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Loading state on submit */
+.signal__btn[data-loading="true"] {
+  pointer-events: none;
+  opacity: 0.7;
+}
+.signal__btn[data-loading="true"] .signal__btn-text::after {
+  content: "···";
+  margin-left: 4px;
+  animation: dots 1s steps(4) infinite;
+}
+@keyframes dots {
+  0%   { content: ""; }
+  25%  { content: "·"; }
+  50%  { content: "··"; }
+  75%  { content: "···"; }
+}
+
 .hero__meta {
   display: flex;
   align-items: center;

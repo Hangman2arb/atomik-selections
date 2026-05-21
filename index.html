@@ -189,18 +189,24 @@
           <input
             class="signal__input"
             id="signal-email"
+            name="email"
             type="email"
             required
             spellcheck="false"
             autocomplete="email"
             placeholder="your.signal @ cosmos"
           />
-          <button class="signal__btn" type="submit">
+          <button class="signal__btn" type="submit" id="signal-btn">
             <span class="signal__btn-text">TRANSMIT</span>
             <svg class="signal__btn-arrow" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3 12H21M15 6L21 12L15 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+        </div>
+        <!-- honeypot (hidden from humans, bots fill it) -->
+        <div class="hp" aria-hidden="true">
+          <label for="h_orbit">Orbit</label>
+          <input type="text" id="h_orbit" name="h_orbit" tabindex="-1" autocomplete="off" />
         </div>
         <p class="signal__ack" id="signal-ack" aria-live="polite"></p>
       </form>
