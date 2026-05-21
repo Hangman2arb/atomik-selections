@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#06001a" />
+  <meta name="description" content="Atomik Selections — interstellar genetics. Transmission incoming." />
+  <meta property="og:title" content="ATOMIK SELECTIONS · Transmission Incoming" />
+  <meta property="og:description" content="Interstellar genetics. Seeded among the stars." />
+  <meta property="og:type" content="website" />
+  <title>ATOMIK SELECTIONS · Transmission Incoming</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Monoton&family=Fraunces:ital,opsz,wght@0,9..144,200..900;1,9..144,200..900&family=JetBrains+Mono:wght@200..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='3' fill='%23ff7ad9'/><ellipse cx='16' cy='16' rx='13' ry='5' fill='none' stroke='%23a875ff' stroke-width='1'/><ellipse cx='16' cy='16' rx='13' ry='5' fill='none' stroke='%2375f0ff' stroke-width='1' transform='rotate(60 16 16)'/><ellipse cx='16' cy='16' rx='13' ry='5' fill='none' stroke='%23ff7ad9' stroke-width='1' transform='rotate(-60 16 16)'/></svg>">
+</head>
+<body class="is-loading">
+
+  <!-- Custom cursor -->
+  <div class="cursor" aria-hidden="true">
+    <div class="cursor__ring"></div>
+    <div class="cursor__dot"></div>
+  </div>
+
+  <!-- Backdrop layers -->
+  <div class="backdrop" aria-hidden="true">
+    <div class="nebula nebula--violet"></div>
+    <div class="nebula nebula--magenta"></div>
+    <div class="nebula nebula--cyan"></div>
+    <div class="nebula nebula--core"></div>
+
+    <div class="stars stars--far" id="stars-far"></div>
+    <div class="stars stars--mid" id="stars-mid"></div>
+    <div class="stars stars--near" id="stars-near"></div>
+
+    <div class="shooting-stars" id="shooting-stars" aria-hidden="true"></div>
+
+    <!-- Distant ringed planet -->
+    <svg class="planet planet--ringed" viewBox="0 0 400 240" aria-hidden="true">
+      <defs>
+        <radialGradient id="ringedGrad" cx="40%" cy="40%">
+          <stop offset="0%" stop-color="#ffb6f2"/>
+          <stop offset="55%" stop-color="#8c4bff"/>
+          <stop offset="100%" stop-color="#1a0640"/>
+        </radialGradient>
+        <linearGradient id="ringedGlow" x1="0" x2="1">
+          <stop offset="0%" stop-color="rgba(255,180,242,0)"/>
+          <stop offset="50%" stop-color="rgba(255,180,242,0.8)"/>
+          <stop offset="100%" stop-color="rgba(255,180,242,0)"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="200" cy="120" rx="190" ry="22" fill="none" stroke="url(#ringedGlow)" stroke-width="2" opacity="0.7"/>
+      <ellipse cx="200" cy="120" rx="170" ry="15" fill="none" stroke="rgba(255,180,242,0.35)" stroke-width="1"/>
+      <circle cx="200" cy="120" r="60" fill="url(#ringedGrad)"/>
+      <circle cx="184" cy="110" r="2" fill="rgba(255,255,255,0.4)"/>
+      <ellipse cx="200" cy="120" rx="155" ry="11" fill="none" stroke="rgba(180,120,255,0.45)" stroke-width="1.2"/>
+    </svg>
+
+    <!-- Cannabis seed planet (oval with seam) -->
+    <svg class="planet planet--seed" viewBox="0 0 200 260" aria-hidden="true">
+      <defs>
+        <radialGradient id="seedGrad" cx="35%" cy="30%">
+          <stop offset="0%" stop-color="#6bf5d7"/>
+          <stop offset="40%" stop-color="#2a8f8a"/>
+          <stop offset="100%" stop-color="#08161f"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="100" cy="130" rx="78" ry="120" fill="url(#seedGrad)"/>
+      <path d="M100 14 Q 106 130 100 246" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+      <path d="M100 14 Q 86 60 100 130 Q 116 200 100 246" fill="none" stroke="rgba(107,245,215,0.25)" stroke-width="1"/>
+      <circle cx="82" cy="60" r="2" fill="rgba(255,255,255,0.5)"/>
+    </svg>
+
+    <!-- Tiny moon -->
+    <svg class="planet planet--moon" viewBox="0 0 80 80" aria-hidden="true">
+      <defs>
+        <radialGradient id="moonGrad" cx="30%" cy="30%">
+          <stop offset="0%" stop-color="#fff0fb"/>
+          <stop offset="100%" stop-color="#3a1a5e"/>
+        </radialGradient>
+      </defs>
+      <circle cx="40" cy="40" r="28" fill="url(#moonGrad)"/>
+      <circle cx="34" cy="36" r="2" fill="rgba(255,255,255,0.3)"/>
+      <circle cx="46" cy="44" r="1.5" fill="rgba(255,255,255,0.2)"/>
+    </svg>
+
+    <div class="grid-floor" aria-hidden="true"></div>
+  </div>
+
+  <!-- Mission control HUD -->
+  <header class="hud" aria-hidden="true">
+    <div class="hud__corner hud__corner--tl">
+      <span class="hud__tick">┌</span>
+      <div class="hud__block">
+        <span class="hud__label">MISSION · <b>ATOMIK-01</b></span>
+        <span class="hud__sub">STATUS · <em>GERMINATING</em></span>
+      </div>
+    </div>
+    <div class="hud__corner hud__corner--tr">
+      <span class="hud__tick">┐</span>
+      <div class="hud__block hud__block--right">
+        <span class="hud__label" id="coord-readout">RA 14ʰ 29ᵐ · DEC −62° 40′</span>
+        <span class="hud__sub" id="time-readout">UTC ··:··:··</span>
+      </div>
+    </div>
+    <div class="hud__corner hud__corner--bl">
+      <span class="hud__tick">└</span>
+      <div class="hud__block">
+        <span class="hud__label">SECTOR · <b>KRYPTON SPIRAL</b></span>
+        <span class="hud__sub">FREQ · <em>420.69 MHz</em></span>
+      </div>
+    </div>
+    <div class="hud__corner hud__corner--br">
+      <span class="hud__tick">┘</span>
+      <div class="hud__block hud__block--right">
+        <span class="hud__label">CULTIVAR INDEX</span>
+        <span class="hud__sub">— <em>CLASSIFIED</em> —</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stage -->
+  <main class="stage" id="stage">
+
+    <!-- Atom system (central, behind logo) -->
+    <div class="atom" aria-hidden="true">
+      <div class="atom__halo"></div>
+      <div class="atom__nucleus">
+        <span class="atom__nucleus-core"></span>
+        <span class="atom__nucleus-ring"></span>
+      </div>
+
+      <div class="atom__orbit-wrap" style="--tilt: 0deg;">
+        <div class="atom__orbit-line"></div>
+        <span class="atom__electron atom__electron--leaf" style="--dur: 14s;">
+          <svg viewBox="-12 -12 24 24"><use href="#leaf"/></svg>
+        </span>
+      </div>
+      <div class="atom__orbit-wrap" style="--tilt: 60deg;">
+        <div class="atom__orbit-line"></div>
+        <span class="atom__electron atom__electron--leaf" style="--dur: 18s; --t-offset: -2.5s; color: #75f0ff;">
+          <svg viewBox="-12 -12 24 24"><use href="#leaf"/></svg>
+        </span>
+      </div>
+      <div class="atom__orbit-wrap" style="--tilt: -60deg;">
+        <div class="atom__orbit-line"></div>
+        <span class="atom__electron atom__electron--leaf" style="--dur: 22s; --t-offset: -7s; color: #ff7ad9;">
+          <svg viewBox="-12 -12 24 24"><use href="#leaf"/></svg>
+        </span>
+      </div>
+    </div>
+
+    <!-- Foreground floating leaves (parallax) -->
+    <svg class="float-leaf float-leaf--1" viewBox="-50 -50 100 100" aria-hidden="true"><use href="#leaf-big"/></svg>
+    <svg class="float-leaf float-leaf--2" viewBox="-50 -50 100 100" aria-hidden="true"><use href="#leaf-big"/></svg>
+    <svg class="float-leaf float-leaf--3" viewBox="-50 -50 100 100" aria-hidden="true"><use href="#leaf-big"/></svg>
+
+    <!-- Hero content -->
+    <section class="hero">
+
+      <div class="hero__eyebrow">
+        <span class="hero__eyebrow-line"></span>
+        <span class="hero__eyebrow-text">EST · MMXXVI · INTERSTELLAR HORTICULTURE</span>
+        <span class="hero__eyebrow-line"></span>
+      </div>
+
+      <div class="hero__logo">
+        <img src="assets/logo.png" alt="Atomik Selections" draggable="false" />
+      </div>
+
+      <h1 class="hero__title" aria-label="Transmission incoming">
+        <span class="hero__title-glitch" aria-hidden="true" data-text="Transmission Incoming">Transmission Incoming</span>
+        <span class="hero__title-real">Transmission Incoming</span>
+      </h1>
+
+      <p class="hero__tagline">
+        <span class="hero__tagline-em">Genetics seeded among the stars.</span><br/>
+        A new chapter of <em>Atomik Selections</em> awakens at the next solar alignment.
+      </p>
+
+      <form class="signal" id="signal" novalidate>
+        <label class="signal__label" for="signal-email">
+          <span class="signal__bracket">[</span> REQUEST FREQUENCY <span class="signal__bracket">]</span>
+        </label>
+        <div class="signal__row">
+          <input
+            class="signal__input"
+            id="signal-email"
+            type="email"
+            required
+            spellcheck="false"
+            autocomplete="email"
+            placeholder="your.signal @ cosmos"
+          />
+          <button class="signal__btn" type="submit">
+            <span class="signal__btn-text">TRANSMIT</span>
+            <svg class="signal__btn-arrow" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 12H21M15 6L21 12L15 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <p class="signal__ack" id="signal-ack" aria-live="polite"></p>
+      </form>
+
+      <div class="hero__meta">
+        <span>21+</span>
+        <span class="hero__meta-dot"></span>
+        <span>cosmic cultivars</span>
+        <span class="hero__meta-dot"></span>
+        <span>no slop · only seeds</span>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Marquee ticker -->
+  <aside class="ticker" aria-hidden="true">
+    <div class="ticker__track">
+      <span>· ATOMIK SELECTIONS · TRANSMISSION INCOMING · SEEDED IN THE COSMOS · GERMINATION IS INTERSTELLAR · MMXXVI · ATOMIK SELECTIONS · TRANSMISSION INCOMING · SEEDED IN THE COSMOS · GERMINATION IS INTERSTELLAR · MMXXVI </span>
+      <span>· ATOMIK SELECTIONS · TRANSMISSION INCOMING · SEEDED IN THE COSMOS · GERMINATION IS INTERSTELLAR · MMXXVI · ATOMIK SELECTIONS · TRANSMISSION INCOMING · SEEDED IN THE COSMOS · GERMINATION IS INTERSTELLAR · MMXXVI </span>
+    </div>
+  </aside>
+
+  <!-- Particle layer (cursor-repelling dust) -->
+  <canvas id="particles" class="particles" aria-hidden="true"></canvas>
+
+  <!-- Atmosphere overlays -->
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- Reusable SVG defs -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- Stylized cannabis leaf glyph (small, for electrons) -->
+      <symbol id="leaf" viewBox="-12 -12 24 24">
+        <g fill="currentColor" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M0 9 L0 -11" stroke-width="1.2"/>
+          <ellipse cx="0" cy="-2" rx="1.1" ry="9"/>
+          <ellipse cx="0" cy="-1" rx="0.9" ry="7" transform="rotate(34)"/>
+          <ellipse cx="0" cy="-1" rx="0.9" ry="7" transform="rotate(-34)"/>
+          <ellipse cx="0" cy="1" rx="0.7" ry="5.2" transform="rotate(62)"/>
+          <ellipse cx="0" cy="1" rx="0.7" ry="5.2" transform="rotate(-62)"/>
+          <ellipse cx="0" cy="3" rx="0.5" ry="3.6" transform="rotate(88)"/>
+          <ellipse cx="0" cy="3" rx="0.5" ry="3.6" transform="rotate(-88)"/>
+        </g>
+      </symbol>
+      <!-- Bigger silhouette leaf for floating accents -->
+      <symbol id="leaf-big" viewBox="-50 -50 100 100">
+        <g fill="currentColor" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M0 40 L0 -48" stroke-width="2.4"/>
+          <ellipse cx="0" cy="-8" rx="4.4" ry="38"/>
+          <ellipse cx="0" cy="-4" rx="3.6" ry="30" transform="rotate(34)"/>
+          <ellipse cx="0" cy="-4" rx="3.6" ry="30" transform="rotate(-34)"/>
+          <ellipse cx="0" cy="2" rx="2.8" ry="22" transform="rotate(62)"/>
+          <ellipse cx="0" cy="2" rx="2.8" ry="22" transform="rotate(-62)"/>
+          <ellipse cx="0" cy="8" rx="2" ry="15" transform="rotate(88)"/>
+          <ellipse cx="0" cy="8" rx="2" ry="15" transform="rotate(-88)"/>
+        </g>
+      </symbol>
+      <!-- Grain noise (small repeating SVG used in CSS bg) -->
+      <filter id="noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+        <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <script src="script.js"></script>
+</body>
+</html>
