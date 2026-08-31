@@ -1,35 +1,14 @@
-export async function onRequestGet({ request, env }) {
-  const url = new URL(request.url);
-  const auth = request.headers.get("Authorization") || "";
-  const token = auth.startsWith("Bearer ")
-    ? auth.slice(7)
-    : (url.searchParams.get("token") || "");
+import { csvCell, csvResponse, toIso } from "../../_lib.js";
 
-  if (!env.ADMIN_TOKEN || token !== env.ADMIN_TOKEN) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
+/** Legacy CSV export (auth handled by _middleware.js: session cookie or Bearer ADMIN_TOKEN). */
+export async function onRequestGet({ env }) {
   const { results } = await env.DB
     .prepare("SELECT id, email, created_at, country, source FROM subscribers ORDER BY id DESC")
     .all();
 
-  const rows = ["id,email,created_at_iso,country,source"];
-  for (const r of results) {
-    const iso = new Date((r.created_at || 0) * 1000).toISOString();
-    rows.push([
-      r.id,
-      JSON.stringify(r.email),
-      iso,
-      JSON.stringify(r.country || ""),
-      JSON.stringify(r.source || ""),
-    ].join(","));
+  const lines = ["id,email,created_at_iso,country,source"];
+  for (const r of results || []) {
+    lines.push([r.id, r.email, toIso(r.created_at), r.country, r.source].map(csvCell).join(","));
   }
-
-  return new Response(rows.join("\n"), {
-    status: 200,
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="atomik-subscribers-${Date.now()}.csv"`,
-    },
-  });
+  return csvResponse(lines, `atomik-subscribers-${Date.now()}.csv`);
 }

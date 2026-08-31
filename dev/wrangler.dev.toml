@@ -1,0 +1,10 @@
+# Local-only config: used by `npm run db:local` so `wrangler d1 execute --local`
+# writes into the same SQLite file that `wrangler pages dev --d1 DB=<id>` reads.
+# Nothing here is used in production (Pages bindings are configured in the dashboard).
+name = "atomik-dev"
+compatibility_date = "2026-05-21"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "atomik_subscribers"
+database_id = "4a1c55f9-192e-45a4-93d7-68520453d275"

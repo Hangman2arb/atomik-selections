@@ -1,0 +1,21 @@
+{
+  "name": "atomik-selections-coming-soon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Atomik Selections coming-soon landing + backoffice (Cloudflare Pages Functions + D1)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev public --d1 DB=4a1c55f9-192e-45a4-93d7-68520453d275 --persist-to .wrangler/state --port 8788 --binding SESSION_SECRET=devsecret --binding ADMIN_TOKEN=devtoken --binding ALLOWED_ORIGINS='[\"http://127.0.0.1:8788\"]'",
+    "db:local": "wrangler d1 execute DB --local -c dev/wrangler.dev.toml --persist-to .wrangler/state --file migrations/0000_base.sql && wrangler d1 execute DB --local -c dev/wrangler.dev.toml --persist-to .wrangler/state --file migrations/0001_backoffice.sql",
+    "db:local:sql": "wrangler d1 execute DB --local -c dev/wrangler.dev.toml --persist-to .wrangler/state --command",
+    "db:migrate:prod": "wrangler d1 execute atomik_subscribers --remote --file migrations/0001_backoffice.sql",
+    "seed:admin": "node dev/seed-admin.mjs",
+    "deploy": "wrangler pages deploy public --project-name=atomik-selections"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "wrangler": "^4.127.1"
+  }
+}

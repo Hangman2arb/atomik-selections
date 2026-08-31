@@ -1,0 +1,544 @@
+/* ============================================================
+   ATOMIK SELECTIONS · Finalist B · "Chrome Sunset Poster"
+   A yellow-paper arcade flyer: ink-framed print area holding a
+   full-bleed Outrun sunset. Only transform + opacity animate.
+   No blurs, no blend overlays, no canvas, no grain: gradients + hard shadows only.
+   ============================================================ */
+
+:root {
+  --yellow: #FFE93B;  --yellow-hi: #FFF59A;
+  --pink: #FF2FA0;    --pink-deep: #C2187A;  --pink-soft: #FF8ACB;
+  --cyan: #3FDCF0;    --cyan-deep: #1FA9BF;  --cyan-soft: #7FEBFA;
+  --plum: #6B1440;    --violet: #4B1E8E;
+  --ink: #12062B;     --ink-deep: #0B0220;   --sky-top: #1B0A3D;
+  --paper: #FFF7FB;
+  --text: #F3E8FF;    --muted: #CDB8EA;
+
+  --line: 3px;                 /* sticker outline weight */
+  --frame: 12px;               /* yellow paper margin */
+  --radius: 22px;
+  --top-h: 60px;
+
+  --font-display: "Kanit", "Arial Black", Impact, sans-serif;
+  --font-body: "Kanit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+
+  --grid: rgba(255, 47, 160, .55);
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --overshoot: cubic-bezier(.2, 1.5, .4, 1);
+}
+
+/* Pointer parallax: JS writes ONE custom property per frame (a "x y" length pair) on .rig.
+   Registered non-inherited so the write recalcs a single node. */
+@property --par { syntax: "<length>+"; inherits: false; initial-value: 0px 0px; }
+
+/* ---------- base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--yellow);
+  overflow-x: clip;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--frame) var(--frame) 0;
+  background: var(--yellow);
+  color: var(--text);
+  font: 400 1rem/1.5 var(--font-body);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+p { margin: 0; }
+img, svg { display: block; }
+
+.sr-only, .hp {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+  opacity: 0; pointer-events: none;
+}
+
+.skip {
+  position: absolute;
+  left: 16px; top: -120px;
+  z-index: 100;
+  padding: 12px 16px;
+  background: var(--ink);
+  color: var(--yellow);
+  border-radius: 10px;
+  font: 600 .9rem/1 var(--font-ui);
+  text-decoration: none;
+}
+.skip:focus { top: 16px; outline: var(--line) solid var(--pink); outline-offset: 3px; }
+
+/* ---------- poster: the print area ---------- */
+.poster {
+  position: relative;
+  isolation: isolate;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--ink-deep);
+  overflow: hidden;
+}
+
+/* top bar */
+/* top bar floats over the sky so stars and the sun cap run behind it */
+.top {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 3;
+  height: var(--top-h);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+  padding: 0 clamp(16px, 3vw, 36px);
+  font: 600 .72rem/1 var(--font-ui);
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--muted);
+}
+.top__sep { margin: 0 .7em; color: var(--pink); }
+.top__soon { color: var(--cyan-soft); }
+.top__age { display: flex; align-items: center; gap: 10px; }
+.chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 26px; padding: 0 9px;
+  border: 2px solid var(--yellow); border-radius: 999px;
+  color: var(--yellow); letter-spacing: .08em;
+  font: 600 .72rem/1 var(--font-ui);
+}
+
+.hero {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- stage: sky + sun + logo ---------- */
+.stage {
+  position: relative; z-index: 1;
+  flex: 1 1 0;
+  min-height: clamp(240px, 34vh, 500px);
+  display: flex; justify-content: center; align-items: stretch;
+  padding: var(--top-h) 0 clamp(6px, 1.4vh, 16px);
+  background: linear-gradient(180deg,
+    var(--sky-top) 0%, #2A1060 26%, var(--violet) 52%, #7A1A6A 72%, var(--pink-deep) 88%, var(--pink) 100%);
+}
+.sun-clip { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
+
+.stars {
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 80%;
+  opacity: .9;
+  background-image:
+    radial-gradient(1.4px 1.4px at 7% 22%,  #fff 60%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 14% 58%, #fff 60%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 22% 12%, #FFF59A 60%, transparent 100%),
+    radial-gradient(1px   1px   at 31% 40%, #fff 60%, transparent 100%),
+    radial-gradient(1.3px 1.3px at 41% 8%,  #fff 60%, transparent 100%),
+    radial-gradient(1px   1px   at 49% 30%, #7FEBFA 60%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 58% 16%, #fff 60%, transparent 100%),
+    radial-gradient(1px   1px   at 66% 46%, #fff 60%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 74% 9%,  #FFB3DC 60%, transparent 100%),
+    radial-gradient(1px   1px   at 81% 34%, #fff 60%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 88% 62%, #fff 60%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 94% 20%, #fff 60%, transparent 100%),
+    radial-gradient(1px   1px   at 36% 70%, #fff 60%, transparent 100%),
+    radial-gradient(1px   1px   at 3%  84%, #fff 60%, transparent 100%);
+}
+
+.rig {
+  position: absolute; inset: 0;
+  translate: var(--par, 0px 0px);
+  will-change: transform;
+}
+.sun-wrap {
+  position: absolute;
+  left: 50%; bottom: 0;
+  height: min(calc(200% - 20px), 96vw, 1100px);   /* cap reaches up behind the top bar */
+  aspect-ratio: 1;
+  translate: -50% 52%;          /* centre sits just under the horizon */
+}
+.sun-rise { position: absolute; inset: 0; animation: rise 1.4s var(--ease-out) both; }
+.sun { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sun-glow {
+  position: absolute; left: 50%; top: 50%;
+  width: 150%; height: 150%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side,
+    rgba(255, 150, 70, .42) 0%, rgba(255, 47, 160, .30) 42%, rgba(255, 47, 160, .10) 68%, rgba(255, 47, 160, 0) 100%);
+  animation: breathe 7s ease-in-out infinite alternate;
+}
+
+/* logo: stretched flex item so the picture can be height-capped by the stage */
+.logo {
+  position: relative; z-index: 2;
+  width: min(88%, 748px);
+  display: flex; align-items: flex-end; justify-content: center;
+  container-type: size;                 /* lets the anchor read the box in cq units */
+  animation: pop 1s var(--ease-out) .25s both;
+}
+.logo picture { display: contents; }
+.logo img {
+  width: auto; height: auto;
+  max-width: 100%; max-height: 100%;
+}
+/* a box that matches the rendered wordmark exactly, whether it is width- or height-capped,
+   so the sticker can hang off its corner without ever touching it */
+.logo__anchor {
+  position: absolute; left: 50%; bottom: 0;
+  translate: -50% 0;
+  width: 100%;                                         /* fallback: the whole logo box */
+  width: min(100cqw, calc(100cqh * 2400 / 1314));
+  aspect-ratio: 2400 / 1314;
+  pointer-events: none;
+}
+
+/* starburst sticker */
+.burst {
+  position: absolute;
+  top: -6%; right: -5%;
+  translate: 100% 0;
+  width: clamp(112px, 10.5vw, 152px);
+  aspect-ratio: 1;
+  transform: rotate(8deg);
+  animation: wobble 6s ease-in-out infinite alternate;
+}
+.burst__inner { position: absolute; inset: 0; display: grid; place-items: center; }
+.burst svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.burst__shadow { fill: var(--ink); }
+.burst__face { fill: var(--yellow); stroke: var(--ink); stroke-width: 4; stroke-linejoin: round; }
+.burst__text {
+  position: relative;
+  text-align: center;
+  font: 600 clamp(10px, .86vw, 12.5px)/1.12 var(--font-ui);
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink);
+  translate: -1px -2px;
+}
+.burst__text--won { display: none; }
+.burst.is-won .burst__text--offer { display: none; }
+.burst.is-won .burst__text--won { display: block; }
+.burst.is-won .burst__face { fill: var(--cyan); }
+.burst.is-won .burst__inner { animation: stamp .55s var(--overshoot) both; }
+
+/* leaves: 7-finger silhouettes */
+.leaf {
+  position: absolute;
+  width: var(--w);
+  color: #1A0840;
+  transform: rotate(var(--r0));
+  transform-origin: 50% 59%;
+  pointer-events: none;
+}
+.leaf svg { width: 100%; height: auto; overflow: visible; }
+.leaf svg use, .leaf svg path, .leaf svg circle { fill: currentColor; }
+.leaf svg #finger { stroke: rgba(255, 47, 160, .95); stroke-width: 2.4; paint-order: stroke fill; }
+/* sky palms: the leaf's centre (base of the fingers) sits on the horizon, stem hidden under the ground */
+.leaf--sky { z-index: 1; bottom: calc(var(--w) * -.58); }
+.leaf--l1 { --w: 34vmin; --r0: 16deg;  left: -5vw;  animation: sway 7s ease-in-out infinite alternate; }
+.leaf--r1 { --w: 34vmin; --r0: -16deg; right: -5vw; animation: sway 8s ease-in-out infinite alternate-reverse; }
+.leaf--l2 { --w: 20vmin; --r0: -7deg;  left: 11vw;  color: #2B1258; }
+.leaf--r2 { --w: 20vmin; --r0: 7deg;   right: 11vw; color: #2B1258; }
+.leaf--l2 svg #finger, .leaf--r2 svg #finger { stroke: rgba(63, 220, 240, .6); }
+.leaf--floor { display: block; z-index: 0; color: #341566; }
+.leaf--floor svg #finger { stroke: rgba(63, 220, 240, .85); }
+.leaf--fl { --w: 24vmin; --r0: 34deg;  left: -9vmin;  bottom: calc(var(--w) * -.62); }
+.leaf--fr { --w: 24vmin; --r0: -34deg; right: -9vmin; bottom: calc(var(--w) * -.62); }
+
+/* ---------- ground: neon grid + pitch ---------- */
+.ground {
+  position: relative; z-index: 2;
+  flex: none;
+  background: var(--ink-deep);
+}
+.floor-clip {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  perspective: 600px;
+  perspective-origin: 50% 0;
+}
+.floor {
+  position: absolute; left: -100%; top: 0;
+  width: 300%;
+  height: min(100%, 560px);
+  transform-origin: 50% 0;
+  transform: rotateX(62deg);
+}
+.floor__lines {
+  position: absolute; left: 0; right: 0; top: -160px; bottom: 0;
+  background-image:
+    linear-gradient(90deg,  var(--grid) 0 2px, transparent 2px),
+    linear-gradient(180deg, var(--grid) 0 2px, transparent 2px);
+  background-size: 160px 160px;
+  animation: floor 5s linear infinite;
+}
+.floor-fade {
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 42%;
+  background: linear-gradient(180deg, var(--ink-deep) 0%, rgba(11, 2, 32, .9) 28%, rgba(11, 2, 32, 0) 100%);
+}
+.horizon {
+  position: absolute; left: 0; right: 0; top: -1px;
+  height: 2px;
+  background: linear-gradient(90deg,
+    rgba(63, 220, 240, 0) 0%, var(--cyan) 22%, var(--paper) 50%, var(--pink) 78%, rgba(255, 47, 160, 0) 100%);
+  box-shadow: 0 0 18px 2px rgba(255, 47, 160, .65), 0 0 70px 10px rgba(255, 47, 160, .30);
+}
+
+.pitch {
+  position: relative; z-index: 2;
+  width: 100%; max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(16px, 2.8vh, 30px) 20px clamp(14px, 2.4vh, 26px);
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+.pitch > * { animation: up .7s var(--ease-out) both; }
+.pitch > :nth-child(1) { animation-delay: .55s; }
+.pitch > :nth-child(2) { animation-delay: .65s; }
+.pitch > :nth-child(3) { animation-delay: .75s; }
+.pitch > :nth-child(4) { animation-delay: .85s; }
+
+/* chrome-band headline: slants with the wordmark, plum hard extrusion */
+.chrome {
+  position: relative; z-index: 0;
+  margin: 0;
+  max-width: 680px;
+  font: italic 900 clamp(2.5rem, min(4.7vw, 7.4vh), 4.5rem)/.96 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: -.005em;
+  rotate: -2deg;
+}
+.chrome__w {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  padding: 0 .06em;
+  background: linear-gradient(180deg,
+    #FFFBD6 0%, #FFE93B 24%, #FF9A3B 44%, #FF2FA0 52%,
+    #FFE1F2 53.5%, #3FDCF0 60%, #1FA9BF 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+}
+.chrome__w::before {
+  content: attr(data-text);
+  position: absolute; left: .06em; top: 0;
+  z-index: -1;
+  translate: -.04em .07em;
+  color: var(--plum); -webkit-text-fill-color: var(--plum);
+}
+
+.sub {
+  margin-top: clamp(10px, 1.6vh, 16px);
+  max-width: 36em;
+  font-size: clamp(1rem, 1.2vw, 1.125rem);
+  line-height: 1.45;
+  color: var(--muted);
+}
+.sub strong { font-weight: 400; color: var(--yellow); }
+
+/* ---------- form: sticker ergonomics on the dark scene ---------- */
+.signal {
+  width: 100%; max-width: 560px;
+  margin-top: clamp(14px, 2.2vh, 24px);
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: 10px;
+}
+.signal__label {
+  align-self: flex-start;
+  font: 600 .74rem/1 var(--font-ui);
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--cyan-soft);
+}
+.signal__row { display: flex; gap: 14px; }
+
+.signal__input {
+  flex: 1 1 200px; min-width: 0;
+  height: 56px; min-height: 56px;
+  padding: 0 18px;
+  font: 400 1.05rem/1 var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--line) solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 5px 5px 0 var(--pink);
+  -webkit-appearance: none; appearance: none;
+}
+.signal__input::placeholder { color: var(--violet); opacity: .72; }
+.signal__input:focus { outline: none; }
+.signal__input:focus-visible {
+  outline: var(--line) solid var(--cyan); outline-offset: 3px;
+  box-shadow: 5px 5px 0 var(--cyan);
+}
+
+.signal__btn {
+  position: relative;
+  flex: none;
+  height: 56px; min-height: 56px;
+  padding: 0 24px;
+  font: 600 .95rem/1 var(--font-ui);
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink);
+  background: var(--yellow);
+  border: var(--line) solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 5px 5px 0 var(--pink);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform .12s var(--ease-out);   /* transform only; shadow/colour swap instantly */
+}
+@media (hover: hover) {
+  .signal__btn:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--pink); background: var(--yellow-hi); }
+}
+.signal__btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--pink); }
+.signal__btn:focus-visible { outline: var(--line) solid var(--cyan); outline-offset: 3px; }
+.signal__btn-label, .signal__btn-sending { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.signal__arrow { width: 18px; height: 18px; }
+.signal__btn-sending { display: none; }
+.signal__btn[data-loading] { cursor: progress; background: var(--cyan); }
+.signal__btn[data-loading] .signal__btn-label { display: none; }
+.signal__btn[data-loading] .signal__btn-sending { display: inline-flex; }
+.spinner {
+  position: relative; display: inline-block;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(18, 6, 43, .3);
+  animation: spin 1s linear infinite;
+}
+.spinner::after {
+  content: ""; position: absolute; left: 50%; top: -4px;
+  width: 6px; height: 6px; margin-left: -3px;
+  border-radius: 50%; background: var(--ink);
+}
+
+/* ack chip: one element, colour-coded per state, stays in the a11y tree while empty */
+.signal__ack {
+  --chip-shadow: var(--pink);
+  align-self: center;
+  max-width: 100%;
+  min-height: 42px;                 /* slot is reserved: the chip never shifts the layout */
+  display: inline-flex; align-items: center;
+  padding: 8px 14px;
+  font: 600 .9rem/1.35 var(--font-ui);
+  letter-spacing: .02em;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--line) solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 4px 4px 0 var(--chip-shadow);
+}
+.signal__ack:empty { padding: 0; border: 0; box-shadow: none; background: transparent; }
+.signal__ack.is-pop { animation: chip .4s var(--overshoot) both; }
+.signal__ack[data-state="sending"] { background: var(--paper); --chip-shadow: var(--cyan); }
+.signal__ack[data-state="new"]     { background: var(--cyan); }
+.signal__ack[data-state="already"] { background: var(--violet); color: var(--paper); --chip-shadow: var(--cyan); }
+.signal__ack[data-state="invalid"],
+.signal__ack[data-state="rate"],
+.signal__ack[data-state="bot"],
+.signal__ack[data-state="error"]   { background: var(--pink); --chip-shadow: var(--yellow); }
+
+.fine {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+  font: 500 .74rem/1.4 var(--font-ui);
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted);
+}
+.chip--fine { min-height: 24px; padding: 0 8px; font-size: .68rem; }
+
+/* ---------- imprint on the paper margin ---------- */
+.imprint {
+  flex: none;
+  display: flex; justify-content: center;
+  padding: 11px var(--frame) 11px;
+  font: 600 .66rem/1.4 var(--font-ui);
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink);
+  text-align: center;
+}
+.imprint p { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
+.imprint__sep { color: var(--pink-deep); }
+
+/* ---------- keyframes (transform + opacity only; base styles are the final state) ---------- */
+@keyframes rise    { from { opacity: 0; transform: translateY(6vh); } }
+@keyframes pop     { from { opacity: 0; transform: scale(.94) translateY(14px); } }
+@keyframes up      { from { opacity: 0; transform: translateY(14px); } }
+@keyframes chip    { from { opacity: 0; transform: scale(.85); } }
+@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes floor   { to { transform: translateY(160px); } }
+@keyframes breathe { from { opacity: .72; } to { opacity: 1; } }
+@keyframes sway    { from { transform: rotate(calc(var(--r0) - 1.5deg)); } to { transform: rotate(calc(var(--r0) + 1.5deg)); } }
+@keyframes wobble  { from { transform: rotate(3deg); } to { transform: rotate(13deg); } }
+@keyframes stamp   { 0% { transform: scale(1); } 45% { transform: scale(1.22) rotate(-8deg); } 100% { transform: scale(1); } }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  /* portrait: the wordmark is width-capped and the free room is above it → sticker hangs off its top-right corner */
+  .burst { top: 0; right: -4%; translate: 0 -115%; width: clamp(96px, 13vw, 124px); }
+  .burst__text { font-size: clamp(9.5px, 1.3vw, 11px); }
+  /* landscape tablets: the wordmark is height-capped, so the room is beside it — size the sticker to that room */
+  @container (min-aspect-ratio: 2400 / 1314) {
+    .burst { top: -6%; right: -5%; translate: 100% 0; width: clamp(72px, calc(56.8cqw - 91.3cqh - 8px), 124px); }
+  }
+  .leaf--l1, .leaf--r1 { --w: 22vmin; }
+  .leaf--l1 { left: -7vmin; }
+  .leaf--r1 { right: -7vmin; }
+  .leaf--l2, .leaf--r2 { display: none; }
+}
+@media (max-width: 760px) {
+  :root { --frame: 8px; --top-h: 48px; --radius: 16px; }
+  .top { font-size: .64rem; letter-spacing: .16em; padding: 0 16px; }
+  .top__age-text { display: none; }
+  .top__name, .top__sep { display: none; }   /* the logo carries the name on phones */
+  .stage { min-height: clamp(220px, 30vh, 360px); }
+  .sun-wrap { height: min(calc(200% - 24px), 132vw); translate: -50% 50%; }
+  .burst { right: -6%; width: clamp(84px, 24vw, 96px); }
+  .burst__text { font-size: 9.5px; letter-spacing: .06em; }
+  .leaf--sky { display: none; }
+  .leaf--floor { display: block; z-index: 0; color: #3A1A70; }
+  .leaf--floor svg #finger { stroke: rgba(255, 47, 160, .9); }
+  .leaf--fl { --w: 56vw; --r0: 30deg;  left: -26vw;  bottom: calc(var(--w) * -.68); }
+  .leaf--fr { --w: 56vw; --r0: -30deg; right: -26vw; bottom: calc(var(--w) * -.68); }
+  .pitch { padding: 12px 16px 12px; }
+  .chrome { font-size: clamp(2.1rem, 10vw, 2.6rem); }
+  .sub { font-size: .98rem; max-width: 30em; }
+  .fine { font-size: .66rem; letter-spacing: .04em; gap: 8px; }
+  .imprint { font-size: .6rem; letter-spacing: .12em; padding: 9px var(--frame); }
+  .imprint__wide { display: none; }
+}
+@media (max-width: 560px) {
+  .signal__row { flex-direction: column; gap: 12px; }
+  .signal__input { flex: none; width: 100%; height: 54px; min-height: 54px; text-align: center; }
+  .signal__btn { flex: none; width: 100%; height: 54px; min-height: 54px; }
+}
+@media (max-width: 380px) {
+  .top { letter-spacing: .1em; }
+  .chrome { font-size: 2rem; }
+  .fine__adults { display: none; }   /* the 21+ chip carries the age notice on narrow phones */
+}
+@media (max-width: 760px) and (max-height: 780px) {
+  .burst { display: none; }   /* no room above the wordmark on short phones; the sub-line carries the offer */
+}
+@media (min-width: 1700px) {
+  .logo { width: min(88%, 820px); }
+  .chrome { max-width: 760px; }
+}
+
+/* ---------- reduced motion: base styles are the final state, so just stop ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .sun-glow { opacity: .9; }
+}

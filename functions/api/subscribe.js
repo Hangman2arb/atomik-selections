@@ -4,8 +4,19 @@ import {
   json,
   rateLimit,
   verifyTurnstile,
-  sendWelcomeEmail,
 } from "../_lib.js";
+import {
+  getSettings,
+  isEmailConfigured,
+  generateDiscountCode,
+  sendTemplateEmail,
+  logEmail,
+  markWelcome,
+} from "../_email.js";
+
+const CODE_ATTEMPTS = 5;
+// How long we wait for Resend before answering "queued" and letting waitUntil finish the job.
+const MAIL_WAIT_MS = 1500;
 
 export async function onRequestOptions({ request, env }) {
   return new Response(null, {
@@ -14,7 +25,8 @@ export async function onRequestOptions({ request, env }) {
   });
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost(context) {
+  const { request, env } = context;
   const origin = request.headers.get("Origin") || "";
   const cors = corsHeaders(origin, env);
 
@@ -50,20 +62,55 @@ export async function onRequestPost({ request, env }) {
     return withCors(json({ status: "blocked", reason: "turnstile" }, 200), cors);
   }
 
+  let settings;
   try {
-    await env.DB.prepare(
-      "INSERT INTO subscribers (email, ip, ua, source, country) VALUES (?, ?, ?, ?, ?)"
-    ).bind(email, ip, ua, "landing", country).run();
-  } catch (e) {
-    const msg = String(e?.message || e).toLowerCase();
-    if (msg.includes("unique") || msg.includes("constraint")) {
-      return withCors(json({ status: "already" }, 200), cors);
-    }
+    settings = await getSettings(env);
+  } catch {
     return withCors(json({ status: "error", reason: "db" }, 500), cors);
   }
 
-  const mail = await sendWelcomeEmail(env, email);
-  return withCors(json({ status: "new", mailed: mail.sent === true }, 200), cors);
+  // Insert with a unique discount code; retry only on a code collision.
+  let inserted = null;
+  for (let attempt = 0; attempt < CODE_ATTEMPTS && !inserted; attempt++) {
+    const code = settings.discount_enabled ? generateDiscountCode(settings.discount_prefix) : null;
+    try {
+      inserted = await env.DB.prepare(
+        "INSERT INTO subscribers (email, ip, ua, source, country, discount_code) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, discount_code"
+      ).bind(email, ip, ua, "landing", country, code).first();
+    } catch (e) {
+      const msg = String(e?.message || e).toLowerCase();
+      if (msg.includes("unique") || msg.includes("constraint")) {
+        if (code && msg.includes("discount_code")) continue;
+        return withCors(json({ status: "already" }, 200), cors);
+      }
+      return withCors(json({ status: "error", reason: "db" }, 500), cors);
+    }
+  }
+  if (!inserted) {
+    return withCors(json({ status: "error", reason: "db" }, 500), cors);
+  }
+
+  // Welcome email. Failures never change the HTTP result.
+  if (!settings.welcome_enabled || !isEmailConfigured(env)) {
+    const reason = settings.welcome_enabled ? "no_resend_key" : "welcome_disabled";
+    await Promise.all([
+      logEmail(env, { subscriber_id: inserted.id, to: email, kind: "welcome", status: "skipped", error: reason }),
+      markWelcome(env, inserted.id, "skipped"),
+    ]);
+    return withCors(json({ status: "new", mailed: false }, 200), cors);
+  }
+
+  const sending = sendTemplateEmail(env, {
+    to: email, subscriber_id: inserted.id, kind: "welcome", code: inserted.discount_code || "", settings,
+  }).catch(() => ({ sent: false }));
+  if (typeof context.waitUntil === "function") context.waitUntil(sending);
+
+  // Answer quickly: report the real outcome if Resend is fast, otherwise "queued" (true).
+  const result = await Promise.race([
+    sending,
+    new Promise((r) => setTimeout(() => r({ sent: true, queued: true }), MAIL_WAIT_MS)),
+  ]);
+  return withCors(json({ status: "new", mailed: result.sent === true }, 200), cors);
 }
 
 function withCors(res, cors) {

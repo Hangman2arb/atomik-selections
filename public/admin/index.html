@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F0520">
+  <title>Atomik · Backoffice</title>
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <a class="skip" href="#view">Skip to content</a>
+
+  <header class="top" id="top" hidden>
+    <a class="brand" href="#/dashboard" aria-label="Dashboard">
+      <img id="brand-logo" src="/assets/logo-color-1200.webp" alt="" width="36" height="36">
+      <span>Backoffice</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Sections">
+      <a href="#/dashboard" data-route="dashboard">Dashboard</a>
+      <a href="#/leads" data-route="leads">Leads</a>
+      <a href="#/email" data-route="email">Email</a>
+      <a href="#/admins" data-route="admins">Admins</a>
+      <a href="#/activity" data-route="activity">Activity</a>
+      <a href="#/account" data-route="account">Account</a>
+    </nav>
+    <div class="top-right">
+      <span class="pill pill-warn" id="pill-email" hidden title="RESEND_API_KEY is not set — no emails are sent">email not configured</span>
+      <span class="who" id="who"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main id="view" class="view" tabindex="-1" aria-live="polite"></main>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+  <dialog id="dlg-confirm" class="dlg">
+    <form method="dialog">
+      <h2 id="dlg-confirm-title">Are you sure?</h2>
+      <p id="dlg-confirm-text"></p>
+      <div class="dlg-actions">
+        <button class="btn btn-ghost" value="cancel" type="submit">Cancel</button>
+        <button class="btn btn-danger" value="ok" type="submit" id="dlg-confirm-ok">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-secret" class="dlg">
+    <form method="dialog">
+      <h2>Temporary password</h2>
+      <p>Share this with the new admin now — it is shown <strong>once</strong> and they must change it on first login.</p>
+      <div class="secret-row">
+        <code id="dlg-secret-value" class="secret"></code>
+        <button class="btn btn-primary btn-sm" type="button" id="dlg-secret-copy">Copy</button>
+      </div>
+      <div class="dlg-actions">
+        <button class="btn btn-ghost" value="ok" type="submit">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>
