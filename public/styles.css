@@ -209,8 +209,8 @@ img, svg { display: block; }
   position: absolute; left: 50%; bottom: 0;
   translate: -50% 0;
   width: 100%;                                         /* fallback: the whole logo box */
-  width: min(100cqw, calc(100cqh * 2400 / 1314));
-  aspect-ratio: 2400 / 1314;
+  width: min(100cqw, calc(100cqh * 2400 / 1276));
+  aspect-ratio: 2400 / 1276;
   pointer-events: none;
 }
 
@@ -517,8 +517,8 @@ img, svg { display: block; }
   .burst { top: 0; right: -4%; translate: 0 -115%; width: clamp(96px, 13vw, 124px); }
   .burst__text { font-size: clamp(9.5px, 1.3vw, 11px); }
   /* landscape tablets: the wordmark is height-capped, so the room is beside it — size the sticker to that room */
-  @container (min-aspect-ratio: 2400 / 1314) {
-    .burst { top: -6%; right: -5%; translate: 100% 0; width: clamp(72px, calc(56.8cqw - 91.3cqh - 8px), 124px); }
+  @container (min-aspect-ratio: 2400 / 1276) {
+    .burst { top: -6%; right: -5%; translate: 100% 0; width: clamp(72px, calc(56.8cqw - 94cqh - 8px), 124px); }
   }
   .leaf--l1, .leaf--r1 { --w: 22vmin; }
   .leaf--l1 { left: -7vmin; }
