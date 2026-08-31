@@ -38,12 +38,12 @@ export function defaults(env) {
   return {
     welcome_enabled: true,
     discount_enabled: true,
-    discount_label: "launch discount",
+    discount_label: "15% off",
     discount_prefix: "ATK",
     from_name: "Atomik Selections",
     from_email: addressOf(env.FROM_EMAIL) || "hello@atomikselections.com",
     reply_to: "atomikselections@gmail.com",
-    welcome_subject: "You're on the list — your Atomik launch code inside ⚛",
+    welcome_subject: "You're in — your 15% Atomik launch code inside ⚛",
     welcome_html: DEFAULT_HTML,
     welcome_text: DEFAULT_TEXT,
   };
@@ -272,10 +272,10 @@ const DEFAULT_HTML = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>You're on the list — Atomik Selections</title>
+<title>You're in — Atomik Selections</title>
 </head>
 <body style="margin:0;padding:0;background:#12062B;color:#F6F1FF;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">Your exclusive {{discount}} code is inside. Keep it safe until launch.</span>
+  <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">Your personal {{discount}} launch code is inside. We'll email you the launch date — keep an eye on your inbox.</span>
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#12062B;">
     <tr>
       <td align="center" style="padding:40px 16px;">
@@ -295,25 +295,28 @@ const DEFAULT_HTML = `<!doctype html>
 
           <tr>
             <td style="background:#1B0A3D;padding:36px 32px 32px;border:1px solid #2E1660;border-top:0;">
-              <p style="margin:0 0 10px;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:#3FDCF0;">Signal locked</p>
-              <h1 style="margin:0 0 18px;font-size:28px;line-height:1.2;font-weight:800;color:#FFFFFF;">You're on the list.</h1>
+              <p style="margin:0 0 10px;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:#3FDCF0;">Welcome aboard</p>
+              <h1 style="margin:0 0 18px;font-size:28px;line-height:1.2;font-weight:800;color:#FFFFFF;">You're in.</h1>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#E6DDF7;">
-                Thanks for joining Atomik Selections before launch. As one of the first on board, you'll get an
-                <strong style="color:#FFE93B;">exclusive {{discount}}</strong> when we open the doors.
+                We're about to launch, and we appreciate you joining us on this adventure. That's why the first folks to join
+                will receive an exclusive discount and surprises for our launch date — <strong style="color:#FFE93B;">limited spots!</strong>
               </p>
-              <p style="margin:0 0 10px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#B8A6E0;">Your personal code</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#E6DDF7;">
+                Your part of the deal: <strong style="color:#FFE93B;">{{discount}} your first order</strong> when we open the doors, with the code below.
+              </p>
+              <p style="margin:0 0 10px;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#B8A6E0;">Your golden ticket</p>
 
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="background:#0F0520;border:2px solid #FF2FA0;border-radius:12px;padding:22px 16px;">
-                    <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:30px;line-height:1.2;letter-spacing:.14em;font-weight:700;color:#FFE93B;">{{code}}</span>
+                  <td align="center" style="background:#FFE93B;border:3px dashed #12062B;border-radius:12px;padding:22px 16px;">
+                    <span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:30px;line-height:1.2;letter-spacing:.14em;font-weight:700;color:#12062B;">{{code}}</span>
                   </td>
                 </tr>
               </table>
 
               <p style="margin:18px 0 0;font-size:14px;line-height:1.6;color:#B8A6E0;">
-                Keep this email — we'll tell you exactly how to redeem the code the moment
-                <a href="{{site_url}}" style="color:#3FDCF0;text-decoration:none;">atomikselections.com</a> goes live.
+                This code is unique to you, so keep this email safe. We'll announce the launch date by email —
+                keep an eye on your inbox. Until then: <a href="{{site_url}}" style="color:#3FDCF0;text-decoration:none;">atomikselections.com</a>
               </p>
             </td>
           </tr>
@@ -332,19 +335,22 @@ const DEFAULT_HTML = `<!doctype html>
 </body>
 </html>`;
 
-const DEFAULT_TEXT = `ATOMIK SELECTIONS — SIGNAL LOCKED
+const DEFAULT_TEXT = `ATOMIK SELECTIONS — WELCOME ABOARD
 
-You're on the list.
+You're in.
 
-Thanks for joining Atomik Selections before launch. As one of the first on board,
-you'll get an exclusive {{discount}} when we open the doors.
+We're about to launch, and we appreciate you joining us on this adventure. That's why
+the first folks to join will receive an exclusive discount and surprises for our launch
+date — limited spots!
 
-YOUR PERSONAL CODE
+Your part of the deal: {{discount}} your first order when we open the doors, with the code below.
+
+YOUR GOLDEN TICKET
 
     {{code}}
 
-Keep this email — we'll tell you exactly how to redeem the code the moment
-{{site_url}} goes live.
+This code is unique to you, so keep this email safe. We'll announce the launch date
+by email — keep an eye on your inbox. Until then: {{site_url}}
 
 —
 21+ · For adults only. Please enjoy responsibly and in accordance with your local laws.

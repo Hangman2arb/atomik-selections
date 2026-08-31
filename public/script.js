@@ -47,8 +47,8 @@
   const MESSAGES = {
     sending: "Sending…",
     invalid: "That email doesn't look right. Check it and try again.",
-    new:     "You're on the list. Your launch discount lands in your inbox first.",
-    already: "Already on the list — you're covered. Watch your inbox at liftoff.",
+    new:     "You're in. Your 15% launch code is on its way to your inbox.",
+    already: "Already on the list — your 15% code is safe. We'll email you the launch date.",
     rate:    "Too many tries. Wait a few minutes and try again.",
     bot:     "That didn't go through. Refresh the page and try again.",
     error:   "Couldn't send right now. Check your connection and try again.",
