@@ -13,7 +13,11 @@ export const KDF = Object.freeze({
   hashBytes: 32,
 });
 
+/* Cookie name. Production uses the `__Host-` prefix (browser-enforced: Secure,
+   Path=/, no Domain → cannot be planted by a sibling subdomain). The prefix is
+   invalid without Secure, so plain-http localhost keeps the legacy name. */
 export const SESSION_COOKIE = "atk_admin";
+export const SESSION_COOKIE_HOST = "__Host-atk_admin";
 export const SESSION_TTL_SECS = 7 * 24 * 60 * 60;
 export const PASSWORD_MIN = 12;
 export const PASSWORD_MAX = 256;
@@ -198,12 +202,29 @@ export function isLocalRequest(request) {
   return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 }
 
-export function sessionCookie(token, request, maxAge = SESSION_TTL_SECS) {
-  const attrs = [`${SESSION_COOKIE}=${token}`, "Path=/", "HttpOnly", "SameSite=Lax", `Max-Age=${maxAge}`];
+export function sessionCookieName(request) {
+  return isLocalRequest(request) ? SESSION_COOKIE : SESSION_COOKIE_HOST;
+}
+
+/** The session token from a Cookie header — `__Host-` name first, legacy name as fallback (transition). */
+export function readSessionToken(cookieHeader) {
+  const c = parseCookies(cookieHeader);
+  return c[SESSION_COOKIE_HOST] || c[SESSION_COOKIE] || "";
+}
+
+function cookieString(name, token, request, maxAge) {
+  const attrs = [`${name}=${token}`, "Path=/", "HttpOnly", "SameSite=Lax", `Max-Age=${maxAge}`];
   if (!isLocalRequest(request)) attrs.push("Secure");
   return attrs.join("; ");
 }
 
-export function clearSessionCookie(request) {
-  return sessionCookie("", request, 0);
+export function sessionCookie(token, request, maxAge = SESSION_TTL_SECS) {
+  return cookieString(sessionCookieName(request), token, request, maxAge);
+}
+
+/** Set-Cookie values that clear the active cookie and, off localhost, the legacy one too. */
+export function clearSessionCookies(request) {
+  const out = [cookieString(sessionCookieName(request), "", request, 0)];
+  if (!isLocalRequest(request)) out.push(cookieString(SESSION_COOKIE, "", request, 0));
+  return out;
 }

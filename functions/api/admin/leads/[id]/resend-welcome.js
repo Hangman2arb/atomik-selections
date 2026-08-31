@@ -1,8 +1,8 @@
-import { json, fail, audit, pick } from "../../../../_lib.js";
+import { json, fail, audit, pathId, leadTarget } from "../../../../_lib.js";
 import { getSettings, isEmailConfigured, generateDiscountCode, sendTemplateEmail } from "../../../../_email.js";
 
 export async function onRequestPost({ env, data, params }) {
-  const id = pick.int(params.id, 0, 0, Number.MAX_SAFE_INTEGER);
+  const id = pathId(params.id);
   if (!id) return fail("not_found", 404);
   if (!isEmailConfigured(env)) return fail("email_not_configured", 409, "RESEND_API_KEY is not set.");
 
@@ -28,6 +28,6 @@ export async function onRequestPost({ env, data, params }) {
   }
 
   const result = await sendTemplateEmail(env, { to: row.email, subscriber_id: row.id, kind: "resend", code: code || "", settings });
-  await audit(env, { admin: data.admin, action: "resend_welcome", target: row.email, ip: data.ip });
+  await audit(env, { admin: data.admin, action: "resend_welcome", target: leadTarget(row), ip: data.ip });
   return json({ ok: result.sent, sent: result.sent, id: result.id || null, error: result.error || null });
 }

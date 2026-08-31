@@ -19,14 +19,16 @@
       <img id="brand-logo" src="/assets/logo-color-1200.webp" alt="" width="36" height="36">
       <span>Backoffice</span>
     </a>
-    <nav class="nav" id="nav" aria-label="Sections">
-      <a href="#/dashboard" data-route="dashboard">Dashboard</a>
-      <a href="#/leads" data-route="leads">Leads</a>
-      <a href="#/email" data-route="email">Email</a>
-      <a href="#/admins" data-route="admins">Admins</a>
-      <a href="#/activity" data-route="activity">Activity</a>
-      <a href="#/account" data-route="account">Account</a>
-    </nav>
+    <div class="nav-wrap">
+      <nav class="nav" id="nav" aria-label="Sections">
+        <a href="#/dashboard" data-route="dashboard">Dashboard</a>
+        <a href="#/leads" data-route="leads">Leads</a>
+        <a href="#/email" data-route="email">Email</a>
+        <a href="#/admins" data-route="admins">Admins</a>
+        <a href="#/activity" data-route="activity">Activity</a>
+        <a href="#/account" data-route="account">Account</a>
+      </nav>
+    </div>
     <div class="top-right">
       <span class="pill pill-warn" id="pill-email" hidden title="RESEND_API_KEY is not set — no emails are sent">email not configured</span>
       <span class="who" id="who"></span>
@@ -36,7 +38,7 @@
 
   <main id="view" class="view" tabindex="-1" aria-live="polite"></main>
 
-  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+  <div id="toasts" class="toasts" role="status" aria-live="polite" aria-label="Notifications"></div>
 
   <dialog id="dlg-confirm" class="dlg">
     <form method="dialog">

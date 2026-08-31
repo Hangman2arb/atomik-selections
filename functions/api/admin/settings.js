@@ -15,7 +15,8 @@ export async function onRequestPut({ request, env, data }) {
   const { body, error } = await readJson(request, { maxBytes: 512 * 1024 });
   if (error) return error;
 
-  const { value, errors } = validateSettings(body);
+  // Current settings are passed so cross-field rules (discount label ↔ toggle) see the merged result.
+  const { value, errors } = validateSettings(body, await getSettings(env));
   if (Object.keys(errors).length) return json({ error: "validation", fields: errors }, 400);
   if (!Object.keys(value).length) return fail("nothing_to_update", 400);
 

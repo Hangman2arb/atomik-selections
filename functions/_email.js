@@ -17,6 +17,7 @@ export const LIMITS = Object.freeze({
 });
 
 export const DEFAULT_SITE_URL = "https://atomikselections.com";
+const RESEND_TIMEOUT_MS = 10_000;
 
 export function siteUrl(env) {
   return String(env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, "");
@@ -48,8 +49,21 @@ export function defaults(env) {
   };
 }
 
-/** Validate a partial settings object. → { value, errors } (value only has the valid keys). */
-export function validateSettings(input) {
+// Control characters are rejected everywhere (header injection via subject /
+// from). The two multi-line templates may of course contain \t \r \n.
+const CTRL = /[\x00-\x1f\x7f]/;
+const CTRL_MULTILINE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+const MULTILINE = new Set(["welcome_html", "welcome_text"]);
+// Characters that would let a display name break out of `"name" <addr>`.
+const FROM_NAME_BAD = /[<>"\\,;]/;
+const CTRL_MSG = "must not contain control characters";
+
+/**
+ * Validate a partial settings object. → { value, errors } (value only has the
+ * valid keys). `base` (the current settings) lets cross-field rules see the
+ * merged result when only some keys are being updated.
+ */
+export function validateSettings(input, base = null) {
   const value = {};
   const errors = {};
   const src = input && typeof input === "object" ? input : {};
@@ -64,20 +78,23 @@ export function validateSettings(input) {
     if (k in src) {
       if (typeof src[k] !== "string") { errors[k] = "must be a string"; continue; }
       if (src[k].length > LIMITS[k]) { errors[k] = `max ${LIMITS[k]} characters`; continue; }
-      value[k] = k === "welcome_html" || k === "welcome_text" ? src[k] : src[k].trim();
+      if ((MULTILINE.has(k) ? CTRL_MULTILINE : CTRL).test(src[k])) { errors[k] = CTRL_MSG; continue; }
+      if (k === "from_name" && FROM_NAME_BAD.test(src[k])) { errors[k] = 'must not contain < > " \\ , or ;'; continue; }
+      value[k] = MULTILINE.has(k) ? src[k] : src[k].trim();
       if (!value[k] && k !== "discount_label") errors[k] = "must not be empty";
     }
   }
   if ("from_email" in src) {
-    const a = addressOf(src.from_email);
-    if (!a || String(src.from_email).length > LIMITS.from_email) errors.from_email = "must be a valid email address";
+    const raw = String(src.from_email ?? "");
+    const a = CTRL.test(raw) ? "" : addressOf(raw);
+    if (!a || raw.length > LIMITS.from_email) errors.from_email = "must be a valid email address";
     else value.from_email = a;
   }
   if ("reply_to" in src) {
     const raw = String(src.reply_to ?? "").trim();
     if (raw === "") value.reply_to = "";
     else {
-      const a = addressOf(raw);
+      const a = CTRL.test(raw) ? "" : addressOf(raw);
       if (!a || raw.length > LIMITS.reply_to) errors.reply_to = "must be a valid email address or empty";
       else value.reply_to = a;
     }
@@ -86,6 +103,13 @@ export function validateSettings(input) {
     const p = String(src.discount_prefix ?? "").trim().toUpperCase();
     if (!/^[A-Z0-9]{2,6}$/.test(p)) errors.discount_prefix = "2–6 letters or digits";
     else value.discount_prefix = p;
+  }
+  // Cross-field: a label is required while discount codes are on ({{discount}} would render empty).
+  const resolved = (k) => (k in value ? value[k] : base ? base[k] : undefined);
+  const label = resolved("discount_label");
+  if (resolved("discount_enabled") === true && typeof label === "string" && !label && !errors.discount_label) {
+    errors.discount_label = "required while discount codes are enabled";
+    delete value.discount_label; // getSettings() ignores `errors` → falls back to the default label
   }
   return { value, errors };
 }
@@ -174,12 +198,14 @@ export async function logEmail(env, { subscriber_id = null, to, kind, status, pr
   }
 }
 
-/** Mark the subscriber row after a welcome/resend attempt. */
-export async function markWelcome(env, subscriber_id, status) {
+/** Mark the subscriber row after a welcome/resend attempt.
+ *  `keepSent`: leave rows that already reached 'sent' alone (a failed resend must not downgrade them). */
+export async function markWelcome(env, subscriber_id, status, { keepSent = false } = {}) {
   if (!subscriber_id) return;
   try {
     await env.DB.prepare(
-      "UPDATE subscribers SET welcome_status = ?, welcome_sent_at = CASE WHEN ? = 'sent' THEN ? ELSE welcome_sent_at END WHERE id = ?"
+      "UPDATE subscribers SET welcome_status = ?, welcome_sent_at = CASE WHEN ? = 'sent' THEN ? ELSE welcome_sent_at END WHERE id = ?" +
+      (keepSent ? " AND (welcome_status IS NULL OR welcome_status <> 'sent')" : "")
     ).bind(status, status, now(), subscriber_id).run();
   } catch (e) {
     console.error("markWelcome failed:", e?.message || e);
@@ -192,10 +218,9 @@ export async function markWelcome(env, subscriber_id, status) {
  * Never throws. → { sent, id?, error?, status }
  */
 export async function sendTemplateEmail(env, { to, subscriber_id = null, kind = "welcome", code = "", settings = null }) {
-  const isWelcome = kind === "welcome" || kind === "resend";
   if (!isEmailConfigured(env)) {
     await logEmail(env, { subscriber_id, to, kind, status: "skipped", error: "no_resend_key" });
-    if (isWelcome) await markWelcome(env, subscriber_id, "skipped");
+    if (kind === "welcome") await markWelcome(env, subscriber_id, "skipped");
     return { sent: false, status: "skipped", error: "no_resend_key" };
   }
 
@@ -205,7 +230,8 @@ export async function sendTemplateEmail(env, { to, subscriber_id = null, kind = 
     const vars = templateVars(env, s, { email: to, code });
     const { subject, html, text } = renderEmail(env, s, vars);
     const payload = {
-      from: `${s.from_name} <${s.from_email}>`,
+      // Quoted display name (validateSettings already refuses `"` and `\`; the escape is belt and braces).
+      from: `"${s.from_name.replace(/["\\]/g, (m) => "\\" + m)}" <${s.from_email}>`,
       to: [to],
       subject, html, text,
       headers: { "X-Entity-Ref-ID": crypto.randomUUID() },
@@ -216,6 +242,7 @@ export async function sendTemplateEmail(env, { to, subscriber_id = null, kind = 
       method: "POST",
       headers: { "Authorization": `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(RESEND_TIMEOUT_MS),
     });
     if (r.ok) {
       const data = await r.json().catch(() => ({}));
@@ -225,12 +252,15 @@ export async function sendTemplateEmail(env, { to, subscriber_id = null, kind = 
       result = { sent: false, status: "failed", error: `resend_${r.status}${detail ? ": " + detail : ""}` };
     }
   } catch (e) {
-    result = { sent: false, status: "failed", error: `exception: ${String(e?.message || e).slice(0, 200)}` };
+    const timedOut = e?.name === "TimeoutError" || e?.name === "AbortError";
+    result = { sent: false, status: "failed", error: `exception: ${timedOut ? "timeout" : String(e?.message || e).slice(0, 200)}` };
   }
 
   await logEmail(env, { subscriber_id, to, kind, status: result.status, provider_id: result.id || null, error: result.error || null });
-  // A failed *resend* must not downgrade a lead that already received its welcome.
-  if (kind === "welcome" || (kind === "resend" && result.sent)) await markWelcome(env, subscriber_id, result.status);
+  // welcome: record the outcome as is. resend: 'sent' on success; on failure
+  // mark 'failed' only if the lead never reached 'sent' (no downgrade).
+  if (kind === "welcome") await markWelcome(env, subscriber_id, result.status);
+  else if (kind === "resend") await markWelcome(env, subscriber_id, result.sent ? "sent" : "failed", { keepSent: !result.sent });
   return result;
 }
 

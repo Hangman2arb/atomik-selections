@@ -85,6 +85,21 @@ export async function rateLimit(env, key, { window = RATE_WINDOW_SECS, max = RAT
   return true;
 }
 
+/**
+ * Read-only twin of rateLimit(): true when the key is still under `max` in the
+ * current window. Nothing is written, so callers can "peek" before an
+ * expensive check and only "hit" (rateLimit) on the failure branch — the
+ * counter then measures failed attempts, not traffic.
+ */
+export async function rateLimitCheck(env, key, { window = RATE_WINDOW_SECS, max = RATE_MAX_HITS } = {}) {
+  if (!key || !env.DB) return true;
+  const row = await env.DB
+    .prepare("SELECT count, window_start FROM rate_limits WHERE ip = ?")
+    .bind(key).first();
+  if (!row || row.window_start < now() - window) return true;
+  return row.count < max;
+}
+
 export async function verifyTurnstile(env, token, ip) {
   if (!env.TURNSTILE_SECRET) return true; // optional
   if (!token) return false;
@@ -114,6 +129,28 @@ export async function audit(env, { admin, action, target = null, ip = "" }) {
   } catch (e) {
     console.error("audit failed:", e?.message || e);
   }
+}
+
+/**
+ * Parse a path segment such as `/leads/:id` into a positive integer. Strict on
+ * purpose: leading zeros, signs, decimals, exponents and anything that would
+ * survive `parseInt` are rejected → null → the caller answers 404.
+ */
+export function pathId(v) {
+  return /^[1-9]\d{0,15}$/.test(String(v ?? "")) ? Number(v) : null;
+}
+
+/** `jane@example.com` → `j***@example.com`. Used so audit rows keep no full PII. */
+export function maskEmail(email) {
+  const s = String(email || "");
+  const at = s.indexOf("@");
+  if (at <= 0) return s ? s[0] + "***" : "";
+  return `${s[0]}***@${s.slice(at + 1)}`;
+}
+
+/** Audit `target` for lead actions: `lead#7 j***@example.com` (id + masked address, never the full email). */
+export function leadTarget(row) {
+  return `lead#${row.id} ${maskEmail(row.email)}`;
 }
 
 /* ---------- CSV ---------- */

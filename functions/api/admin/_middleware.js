@@ -1,12 +1,12 @@
 /* Gate for everything under /api/admin/*.
    - CSRF guards on state-changing methods (same-origin Origin + JSON content type)
-   - session cookie (HMAC) or `Authorization: Bearer <ADMIN_TOKEN>`
+   - session cookie (HMAC) or `Authorization: Bearer <ADMIN_TOKEN>` (read-only)
    - must_change gate (403 password_change_required)
    - Cache-Control: no-store on every response; generic 500 on unexpected errors
    The admin API is same-origin only: no CORS headers, OPTIONS → 405. */
 
-import { fail, clientIp } from "../../_lib.js";
-import { SESSION_COOKIE, parseCookies, verifySession, getSessionSecret, safeEqualStrings } from "../../_auth.js";
+import { fail, clientIp, rateLimit, rateLimitCheck } from "../../_lib.js";
+import { readSessionToken, verifySession, getSessionSecret, safeEqualStrings } from "../../_auth.js";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const OPEN = [["POST", "/api/admin/login"]];
@@ -15,6 +15,8 @@ const ALLOWED_WHILE_MUST_CHANGE = [
   ["GET", "/api/admin/me"],
   ["POST", "/api/admin/logout"],
 ];
+// Failed Bearer attempts per IP (only failures count, see rateLimitCheck).
+const TOKEN_LIMIT = { window: 15 * 60, max: 10 };
 
 const matches = (list, method, path) => list.some(([m, p]) => m === method && p === path);
 
@@ -43,6 +45,13 @@ async function guard(context, path, method) {
   if (!env.DB) return fail("db_unavailable", 503);
   if (method === "OPTIONS") return fail("method_not_allowed", 405);
 
+  const authz = request.headers.get("Authorization") || "";
+  const bearer = authz.startsWith("Bearer ");
+
+  // The machine token is READ-ONLY. Refuse mutating methods before looking at
+  // the token at all, so a POST can never be used to probe whether it is valid.
+  if (bearer && MUTATING.has(method)) return fail("token_scope", 403, "The API token is read-only (GET only).");
+
   if (MUTATING.has(method)) {
     const origin = request.headers.get("Origin");
     if (origin && origin !== new URL(request.url).origin) return fail("bad_origin", 403);
@@ -54,18 +63,23 @@ async function guard(context, path, method) {
 
   if (matches(OPEN, method, path)) return next();
 
-  const authz = request.headers.get("Authorization") || "";
-  if (authz.startsWith("Bearer ")) {
+  if (bearer) {
+    const ip = clientIp(request);
+    const key = `token:${ip || "unknown"}`;
+    if (!(await rateLimitCheck(env, key, TOKEN_LIMIT))) {
+      return fail("rate_limited", 429, "Too many failed token attempts. Try again in 15 minutes.");
+    }
     const token = authz.slice(7).trim();
     if (!env.ADMIN_TOKEN || !token || !(await safeEqualStrings(token, env.ADMIN_TOKEN))) {
+      await rateLimit(env, key, TOKEN_LIMIT); // count the failure
       return fail("unauthorized", 401);
     }
     data.admin = { id: 0, email: "api-token", name: "API token", must_change: 0, via: "token" };
-    data.ip = clientIp(request);
+    data.ip = ip;
     return next();
   }
 
-  const token = parseCookies(request.headers.get("Cookie"))[SESSION_COOKIE];
+  const token = readSessionToken(request.headers.get("Cookie"));
   if (!token) return fail("unauthorized", 401);
   const { secret } = await getSessionSecret(env);
   const session = await verifySession(secret, token);

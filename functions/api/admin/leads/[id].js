@@ -1,15 +1,10 @@
-import { json, fail, readJson, audit, pick } from "../../../_lib.js";
+import { json, fail, readJson, audit, pathId, leadTarget } from "../../../_lib.js";
 import { LEAD_COLUMNS } from "../../../_leads.js";
 
 const NOTES_MAX = 2000;
 
-function leadId(params) {
-  const id = pick.int(params.id, 0, 0, Number.MAX_SAFE_INTEGER);
-  return id > 0 && String(id) === String(params.id) ? id : null;
-}
-
 export async function onRequestPatch({ request, env, data, params }) {
-  const id = leadId(params);
+  const id = pathId(params.id);
   if (!id) return fail("not_found", 404);
   const { body, error } = await readJson(request, { maxBytes: 16 * 1024 });
   if (error) return error;
@@ -24,22 +19,25 @@ export async function onRequestPatch({ request, env, data, params }) {
     .bind(notes, id).first();
   if (!row) return fail("not_found", 404);
 
-  await audit(env, { admin: data.admin, action: "lead_note", target: row.email, ip: data.ip });
+  await audit(env, { admin: data.admin, action: "lead_note", target: leadTarget(row), ip: data.ip });
   return json(row);
 }
 
 export async function onRequestDelete({ env, data, params }) {
-  const id = leadId(params);
+  const id = pathId(params.id);
   if (!id) return fail("not_found", 404);
 
   const row = await env.DB.prepare("SELECT id, email FROM subscribers WHERE id = ?").bind(id).first();
   if (!row) return fail("not_found", 404);
 
-  // Hard delete + scrub the address from the email log so erasure is complete.
+  // Erasure: drop the row, scrub the address from email_log, and scrub any
+  // audit rows that still hold the full address (written before targets were
+  // masked). What remains afterwards is `lead#<id> j***@domain` in admin_audit.
   await env.DB.batch([
     env.DB.prepare("DELETE FROM subscribers WHERE id = ?").bind(id),
     env.DB.prepare("UPDATE email_log SET to_email = '[deleted]' WHERE subscriber_id = ?").bind(id),
+    env.DB.prepare("UPDATE admin_audit SET target = '[deleted]' WHERE target = ?").bind(row.email),
   ]);
-  await audit(env, { admin: data.admin, action: "lead_delete", target: row.email, ip: data.ip });
+  await audit(env, { admin: data.admin, action: "lead_delete", target: leadTarget(row), ip: data.ip });
   return json({ ok: true });
 }

@@ -1,4 +1,4 @@
-import { EMAIL_RE, json, fail, readJson, audit, pick } from "../../../_lib.js";
+import { EMAIL_RE, json, fail, readJson, rateLimit, audit, pick } from "../../../_lib.js";
 import { generateTempPassword, hashPassword } from "../../../_auth.js";
 
 export async function onRequestGet({ env }) {
@@ -15,6 +15,9 @@ export async function onRequestPost({ request, env, data }) {
   const name = pick.str(body.name, 100);
   if (!EMAIL_RE.test(email)) return fail("validation", 400, "email must be a valid address");
   if (!name) return fail("validation", 400, "name is required");
+  if (!(await rateLimit(env, `admincreate:${data.admin.id}`, { window: 15 * 60, max: 10 }))) {
+    return fail("rate_limited", 429, "Too many admins created. Try again in 15 minutes.");
+  }
 
   const temp = generateTempPassword(20);
   const h = await hashPassword(temp);

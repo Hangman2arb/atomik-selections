@@ -1,10 +1,14 @@
-# Backoffice: never indexed, never cached, no referrer leakage.
+# Backoffice: never indexed, never cached, no referrer leakage, strict CSP.
+# The SPA has no inline scripts; 'unsafe-inline' styles are needed for style=""
+# attributes and for the email preview iframe (srcdoc inherits this policy —
+# hence the Google Fonts hosts, so templates that use them still preview).
 /admin
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
   Referrer-Policy: no-referrer
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
 
 /admin/*
   X-Robots-Tag: noindex, nofollow
@@ -12,6 +16,7 @@
   Referrer-Policy: no-referrer
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
 
 # API responses (Functions set these too; this covers any static fallback).
 /api/*

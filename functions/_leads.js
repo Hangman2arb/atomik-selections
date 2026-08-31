@@ -5,8 +5,9 @@ import { pick } from "./_lib.js";
 export const LEAD_COLUMNS =
   "id, email, created_at, country, source, discount_code, welcome_status, welcome_sent_at, notes, unsubscribed_at";
 
-const SORTS = { created_at: "created_at", email: "email COLLATE NOCASE", country: "country" };
-const STATUSES = new Set(["sent", "failed", "pending", "unsubscribed"]);
+// User input indexes these → own-property checks only (`?sort=constructor` must not reach the prototype).
+const SORTS = Object.freeze({ created_at: "created_at", email: "email COLLATE NOCASE", country: "country" });
+export const STATUSES = new Set(["sent", "failed", "pending", "skipped", "unsubscribed"]);
 
 /** Parse query params into { where, params, orderBy, page, per, filters }. All values are bound. */
 export function leadsQuery(searchParams) {
@@ -16,7 +17,8 @@ export function leadsQuery(searchParams) {
   const status = STATUSES.has(statusRaw) ? statusRaw : "";
   const from = pick.day(searchParams.get("from"));
   const to = pick.day(searchParams.get("to"));
-  const sortKey = SORTS[searchParams.get("sort")] ? searchParams.get("sort") : "created_at";
+  const sortRaw = pick.str(searchParams.get("sort"), 20);
+  const sortKey = Object.hasOwn(SORTS, sortRaw) ? sortRaw : "created_at";
   const dir = searchParams.get("dir") === "asc" ? "ASC" : "DESC";
   const page = pick.int(searchParams.get("page"), 1, 1, 100_000);
   const per = pick.int(searchParams.get("per"), 50, 1, 200);
@@ -24,14 +26,15 @@ export function leadsQuery(searchParams) {
   const where = [];
   const params = [];
   if (q) {
-    // Escape LIKE wildcards so a search for "%" or "_" is literal.
-    where.push("(lower(email) LIKE ? ESCAPE '\\' OR discount_code = ? OR lower(notes) LIKE ? ESCAPE '\\')");
+    // Escape LIKE wildcards so a search for "%" or "_" is literal. Codes are stored upper-case.
     const like = `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
-    params.push(like, q.toUpperCase(), like);
+    where.push("(lower(email) LIKE ? ESCAPE '\\' OR discount_code LIKE ? ESCAPE '\\' OR lower(notes) LIKE ? ESCAPE '\\')");
+    params.push(like, like.toUpperCase(), like);
   }
   if (country) { where.push("country = ?"); params.push(country); }
-  if (status === "sent" || status === "failed") { where.push("welcome_status = ?"); params.push(status); }
-  else if (status === "pending") where.push("(welcome_status IS NULL OR welcome_status NOT IN ('sent','failed'))");
+  // welcome_status: 'sent' | 'failed' | 'skipped' (email disabled / no key) | NULL (never attempted → "pending").
+  if (status === "sent" || status === "failed" || status === "skipped") { where.push("welcome_status = ?"); params.push(status); }
+  else if (status === "pending") where.push("welcome_status IS NULL");
   else if (status === "unsubscribed") where.push("unsubscribed_at IS NOT NULL");
   if (from != null) { where.push("created_at >= ?"); params.push(from); }
   if (to != null) { where.push("created_at < ?"); params.push(to + 86400); }

@@ -1,4 +1,4 @@
-import { EMAIL_RE, json, fail, readJson, audit, pick } from "../../../_lib.js";
+import { EMAIL_RE, json, fail, readJson, rateLimit, audit, pick } from "../../../_lib.js";
 import { getSettings, isEmailConfigured, generateDiscountCode, sendTemplateEmail } from "../../../_email.js";
 
 export async function onRequestPost({ request, env, data }) {
@@ -8,6 +8,9 @@ export async function onRequestPost({ request, env, data }) {
   const to = pick.str(body.to, 254).toLowerCase();
   if (!EMAIL_RE.test(to)) return fail("validation", 400, "`to` must be a valid email address.");
   if (!isEmailConfigured(env)) return fail("email_not_configured", 409, "RESEND_API_KEY is not set.");
+  if (!(await rateLimit(env, `emailtest:${data.admin.id}`, { window: 15 * 60, max: 10 }))) {
+    return fail("rate_limited", 429, "Too many test emails. Try again in 15 minutes.");
+  }
 
   const settings = await getSettings(env);
   const isAdmin = await env.DB.prepare("SELECT 1 FROM admins WHERE email = ?").bind(to).first();

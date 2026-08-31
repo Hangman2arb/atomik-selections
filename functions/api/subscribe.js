@@ -105,11 +105,14 @@ export async function onRequestPost(context) {
   }).catch(() => ({ sent: false }));
   if (typeof context.waitUntil === "function") context.waitUntil(sending);
 
-  // Answer quickly: report the real outcome if Resend is fast, otherwise "queued" (true).
+  // Answer quickly. `mailed:true` only when Resend has actually accepted the
+  // message; if it is still in flight after MAIL_WAIT_MS the send continues in
+  // waitUntil and the landing gets `mailed:false, queued:true`.
   const result = await Promise.race([
     sending,
-    new Promise((r) => setTimeout(() => r({ sent: true, queued: true }), MAIL_WAIT_MS)),
+    new Promise((r) => setTimeout(() => r({ queued: true }), MAIL_WAIT_MS)),
   ]);
+  if (result.queued) return withCors(json({ status: "new", mailed: false, queued: true }, 200), cors);
   return withCors(json({ status: "new", mailed: result.sent === true }, 200), cors);
 }
 

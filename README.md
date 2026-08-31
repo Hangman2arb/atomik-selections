@@ -48,7 +48,7 @@ backoffice for the email list: leads, discount codes, welcome emails and admins.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `POST` | `/api/subscribe` | Body `{email, h_orbit}` → `{status:"new"\|"already"\|"invalid"\|"blocked"\|"error", reason?, mailed?}`. Honeypot (`h_orbit`), 5 req/h per IP, optional Turnstile. On `new`: generates a unique discount code `ATK-XXXX-XXXX`, stores it, sends the welcome email (if enabled and `RESEND_API_KEY` is set) and logs it. Email failures never change the HTTP result. `mailed` is `true` when the email was sent — or, if Resend takes longer than 1.5 s, when it has been queued (`waitUntil`) so the landing gets a fast answer. |
+| `POST` | `/api/subscribe` | Body `{email, h_orbit}` → `{status:"new"\|"already"\|"invalid"\|"blocked"\|"error", reason?, mailed?}`. Honeypot (`h_orbit`), 5 req/h per IP, optional Turnstile. On `new`: generates a unique discount code `ATK-XXXX-XXXX`, stores it, sends the welcome email (if enabled and `RESEND_API_KEY` is set) and logs it. Email failures never change the HTTP result. `mailed` is `true` only when Resend has actually accepted the message; if Resend has not answered within 1.5 s the send continues in the background (`waitUntil`) and the response is `{status:"new", mailed:false, queued:true}`. |
 | `GET` | `/api/health` | Liveness. |
 
 ### Admin (`/api/admin/*`, same-origin only, JSON)
@@ -58,31 +58,31 @@ with a proper status. Every response carries `Cache-Control: no-store`.
 
 | Method | Path | What |
 | --- | --- | --- |
-| `POST` | `/login` | `{email,password}` → `{ok, must_change, admin}` + session cookie. 10 attempts / 15 min per IP → 429. |
-| `POST` | `/logout` | Clears the cookie. |
+| `POST` | `/login` | `{email,password}` → `{ok, must_change, admin}` + session cookie. Only **failed** logins count: 10 / 15 min per IP **and** 10 / 15 min per account → 429. |
+| `POST` | `/logout` | "Sign out everywhere": clears the cookie **and** bumps `pass_version`, so every other session of that admin dies too. |
 | `GET` | `/me` | `{admin:{id,email,name,must_change}, email_configured, version}` |
-| `PUT` | `/password` | `{current,next}` (min 12 chars) → bumps `pass_version` (kills other sessions), clears `must_change`, re-issues cookie. |
-| `GET` | `/stats` | Totals, today/7d/30d/prev7d, welcome sent/failed/pending, top countries, 60-day zero-filled series, latest 5. |
-| `GET` | `/leads` | `?q=&country=&status=sent\|failed\|pending\|unsubscribed&from=&to=&sort=created_at\|email\|country&dir=&page=&per=` (≤200) |
+| `PUT` | `/password` | `{current,next}` (min 12 chars) → bumps `pass_version` (kills other sessions), clears `must_change`, re-issues cookie. Wrong current password → 403 `wrong_current_password`; 5 attempts / 15 min per admin → 429. |
+| `GET` | `/stats` | `?tz=<minutes>` (the browser's `getTimezoneOffset()`, default 0). Totals, today/7d/30d/prev7d, `welcome:{sent,failed,pending,skipped}` (`pending` = never attempted, `skipped` = welcome off / no `RESEND_API_KEY`), top countries, 60-day zero-filled series, latest 5. "Today" and the series use day boundaries in the given offset (`date(created_at - tz*60,'unixepoch')`); it is the *current* offset, so a 60-day window spanning a DST switch is bucketed an hour off for the days before the switch. |
+| `GET` | `/leads` | `?q=&country=&status=sent\|failed\|pending\|skipped\|unsubscribed&from=&to=&sort=created_at\|email\|country&dir=&page=&per=` (≤200). `q` matches email, discount code and notes (case-insensitive substring). Unknown `sort`/`status` values fall back to the default. |
 | `PATCH` | `/leads/:id` | `{notes}` → updated row. |
-| `DELETE` | `/leads/:id` | Hard delete + scrubs the address from `email_log`. Audited. |
-| `POST` | `/leads/:id/resend-welcome` | Sends the welcome template again (kind `resend`). 409 if email is not configured. |
+| `DELETE` | `/leads/:id` | Hard delete + scrubs the address from `email_log` and from any older audit rows. Audit targets for lead actions are `lead#<id> j***@domain` (never the full address). |
+| `POST` | `/leads/:id/resend-welcome` | Sends the welcome template again (kind `resend`). 409 if email is not configured. Success → `welcome_status='sent'`; failure → `'failed'` unless the lead already had `'sent'`. Resend calls time out after 10 s (`exception: timeout`). |
 | `GET` | `/export.csv` | Same filters as `/leads`, no paging, `text/csv` attachment. |
 | `GET` / `PUT` | `/settings` | Welcome/discount toggles, from/reply-to, subject, HTML + text templates, discount label/prefix. Validated; partial updates allowed. |
-| `POST` | `/email/test` | `{to}` — only an admin's address or the reply-to. |
+| `POST` | `/email/test` | `{to}` — only an admin's address or the reply-to. 10 / 15 min per admin. |
 | `GET` | `/email/log` | Last 20 per page, joined with the subscriber email. |
-| `GET` / `POST` | `/admins` | List / create (`{email,name}` → `{temp_password}` shown once, `must_change=1`). |
-| `DELETE` | `/admins/:id` | Not yourself, not the last admin. |
+| `GET` / `POST` | `/admins` | List / create (`{email,name}` → `{temp_password}` shown once, `must_change=1`). Creation: 10 / 15 min per admin. |
+| `DELETE` | `/admins/:id` | Not yourself, not the last admin (the guard is atomic: `DELETE … WHERE (SELECT COUNT(*) FROM admins) > 1`). |
 | `GET` | `/audit` | Admin activity, 50 per page. |
 | `GET` | `/health` | `{ok, db, email_configured, session_secret:"env"\|"db"}` |
-| `GET` | `/count`, `/subscribers` | Legacy JSON count / CSV export. Now authenticated by the middleware (cookie **or** Bearer token). The old `?token=` query parameter is no longer accepted — use the `Authorization` header. |
+| `GET` | `/count`, `/subscribers` | Legacy JSON count / CSV export. Now authenticated by the middleware (cookie **or** Bearer token). The old `?token=` query parameter is no longer accepted — use the `Authorization` header. The CSV is now RFC 4180 (CRLF line endings, cells quoted when they contain `"`, `,` or newlines, formula-looking cells prefixed with `'`). |
 
 ### How auth works
 
 1. Passwords are PBKDF2-SHA256 (12 000 iterations, 16-byte salt, 32-byte hash, base64) — deliberately light for the Functions CPU budget; `functions/_auth.js` is the single implementation, also imported by `dev/seed-admin.mjs`.
-2. Login sets `atk_admin` = `base64url({sub,email,pv,iat,exp}).base64url(HMAC-SHA256)` — HttpOnly, SameSite=Lax, Path=/, Secure (Secure is skipped only for localhost/127.0.0.1), 7 days.
+2. Login sets `__Host-atk_admin` = `base64url({sub,email,pv,iat,exp}).base64url(HMAC-SHA256)` — HttpOnly, SameSite=Lax, Path=/, Secure, 7 days. The `__Host-` prefix is browser-enforced (Secure + Path=/ + no Domain), so a sibling subdomain cannot plant a session cookie; on plain-http localhost the cookie is called `atk_admin` instead (the middleware reads both).
 3. The HMAC key is `SESSION_SECRET`; if unset, a random 32-byte secret is generated once and kept in `settings.session_secret`.
-4. On every admin request the middleware verifies signature + expiry, then one `SELECT` confirms the admin still exists and `pv` equals the current `pass_version` (a password change invalidates every other session). Alternatively `Authorization: Bearer <ADMIN_TOKEN>` (constant-time compare) authenticates scripts.
+4. On every admin request the middleware verifies signature + expiry, then one `SELECT` confirms the admin still exists and `pv` equals the current `pass_version` (a password change — or a logout — invalidates every other session). Alternatively `Authorization: Bearer <ADMIN_TOKEN>` (constant-time compare) authenticates scripts, **read-only**: only `GET` is accepted with a token (any mutating method → 403 `token_scope`, decided before the token is even compared), and 10 failed token attempts / 15 min per IP → 429.
 5. CSRF: state-changing methods must send `Content-Type: application/json` and, if an `Origin` header is present, it must match the site. `must_change=1` limits the session to `/me`, `/password`, `/logout` until the password is changed. Everything sensitive is written to `admin_audit`.
 
 ## Environment variables (Pages project → Settings → Variables and Secrets)
@@ -91,7 +91,7 @@ with a proper status. Every response carries `Cache-Control: no-store`.
 | --- | --- | --- |
 | `DB` (D1 binding) | yes | Bind the `atomik_subscribers` database as `DB`. |
 | `SESSION_SECRET` | recommended | ≥ 32 random chars, HMAC key for session cookies. Falls back to a DB-stored secret. |
-| `ADMIN_TOKEN` | optional | Machine token for scripted access (`Authorization: Bearer …`). |
+| `ADMIN_TOKEN` | optional | **Read-only** machine token for scripted access (`Authorization: Bearer …`, `GET` only — `/count`, `/subscribers`, `/export.csv`, `/leads`, `/stats`…). Must be at least 32 random bytes, e.g. `openssl rand -base64 32`. |
 | `RESEND_API_KEY` | for email | Without it nothing is sent; welcome status is `skipped` and the admin UI shows an "email not configured" pill. |
 | `FROM_EMAIL` | optional | Default from-address (overridable in the admin Email screen). |
 | `SITE_URL` | optional | Base URL used for `{{site_url}}` in emails (default `https://atomikselections.com`). |
@@ -119,12 +119,25 @@ execute --local` and `wrangler pages dev --d1 DB=<id>` write to the same SQLite 
 The first login with a seeded admin forces a password change (`must_change=1`).
 
 `db:local` is not idempotent (0001 uses `ALTER TABLE`): to reset local data run `rm -rf .wrangler/state` and
-then `npm run db:local` again.
+then `npm run db:local` again. Rate limits live in the same DB (`rate_limits`), so after hammering login /
+token tests locally either wait 15 minutes or `npm run db:local:sql -- "DELETE FROM rate_limits"`.
 
 ## Deploy
 
 Pushes to `main` deploy through `.github/workflows/deploy.yml` (`wrangler pages deploy public`; Pages
 picks up `functions/` automatically). Manual: `npm run deploy`.
+
+### Deploy checklist
+
+CI deploys **automatically** on every push to `main`, so the database must be ready *before* the merge:
+
+1. **Apply migrations to production first**: `npm run db:migrate:prod` (production already has `0001_backoffice.sql`;
+   any future `migrations/000N_*.sql` must be applied the same way before the code that needs it lands on `main`).
+   Migrations are additive, so applying them while the old code is still running is safe — the reverse (new code,
+   old schema) is not: every `/api/admin/*` call and the discount-code insert would fail.
+2. Check the Pages variables (`SESSION_SECRET`, `RESEND_API_KEY`, `ADMIN_TOKEN` if used) are set.
+3. Merge to `main`, watch the workflow, then hit `/api/admin/health` (with a token or after logging in) — `db:true`
+   and `email_configured:true` are expected.
 
 One-time production setup:
 
@@ -153,7 +166,12 @@ resend welcome, delete, CSV export) · Email (toggles, sender, subject, HTML/tex
 preview, send test, recent log) · Admins · Account (change password, system status) · Activity (audit log).
 
 Template variables: `{{email}}`, `{{code}}`, `{{discount}}`, `{{site_url}}`. The default template
-references `/assets/logo-color-1200.png` on the site.
+references `/assets/logo-color-1200.png` on the site. In the admin's live preview `{{site_url}}` is
+replaced by the current origin so the logo renders locally too; real sends use `SITE_URL`.
+
+`/admin/*` is served with a strict `Content-Security-Policy` (`public/_headers`): scripts only from the
+site, no inline scripts, `connect-src 'self'`, `frame-ancestors 'none'`. The preview iframe (`srcdoc`,
+sandboxed) inherits that policy, which is why inline styles and the Google Fonts hosts are allowed.
 
 ## Landing notes
 
