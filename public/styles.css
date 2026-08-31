@@ -115,6 +115,8 @@ img, svg { display: block; }
   letter-spacing: .2em; text-transform: uppercase;
   color: var(--muted);
 }
+.top__brand { display: flex; align-items: center; }
+.top__mark { height: 22px; width: auto; margin-right: 10px; flex: none; }
 .top__sep { margin: 0 .7em; color: var(--pink); }
 .top__soon { color: var(--cyan-soft); }
 .top__age { display: flex; align-items: center; gap: 10px; }
