@@ -371,7 +371,7 @@ img, svg { display: block; }
 
 .sub {
   margin-top: clamp(10px, 1.6vh, 16px);
-  max-width: 36em;
+  max-width: 44em;
   font-size: clamp(1rem, 1.2vw, 1.125rem);
   line-height: 1.45;
   color: var(--muted);
@@ -562,9 +562,10 @@ img, svg { display: block; }
   .burst { display: none; }   /* no room above the wordmark on short phones → the offer chip below takes over */
   .offer { display: flex; margin-bottom: 4px; }
   .pitch { padding-top: 8px; padding-bottom: 8px; }
-  .sub { margin-top: 6px; }
+  .sub { margin-top: 6px; font-size: .9rem; line-height: 1.4; }
   .fine { margin-top: 4px; }
-  .stage { min-height: clamp(200px, 27vh, 360px); }
+  .stage { min-height: clamp(190px, 25vh, 360px); }
+  .chrome { font-size: clamp(1.9rem, 9vw, 2.4rem); }
 }
 @media (min-width: 1700px) {
   .logo { width: min(88%, 820px); }
