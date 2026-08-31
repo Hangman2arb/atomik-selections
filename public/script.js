@@ -42,6 +42,7 @@
   const ack   = $("#signal-ack");
   const btn   = $("#signal-btn");
   const burst = $("#burst");
+  const offer = $("#offer");
 
   const MESSAGES = {
     sending: "Sending…",
@@ -62,10 +63,12 @@
   }
 
   function reward() {
-    if (!burst) return;
-    burst.classList.remove("is-won");
-    void burst.offsetWidth;
-    burst.classList.add("is-won");
+    for (const el of [burst, offer]) {
+      if (!el) continue;
+      el.classList.remove("is-won");
+      void el.offsetWidth;
+      el.classList.add("is-won");
+    }
   }
 
   if (form && ack) {
@@ -106,6 +109,7 @@
         } else if (status === "already") {
           input.value = "";
           say("already");
+          reward();
         } else if (status === "invalid") {
           say("invalid");
         } else if (status === "blocked" && data?.reason === "rate_limit") {
