@@ -323,7 +323,7 @@ const DEFAULT_HTML = `<!doctype html>
 
           <tr>
             <td style="padding:22px 12px 0;text-align:center;font-size:12px;line-height:1.7;color:#8C7BB5;">
-              <span style="color:#FF2FA0;font-weight:700;">21+</span> · For adults only. Please enjoy responsibly and in accordance with your local laws.<br>
+              <span style="color:#FF2FA0;font-weight:700;">18+</span> · For adults only. Please enjoy responsibly and in accordance with your local laws.<br>
               You're receiving this because you joined the list at atomikselections.com with {{email}}.<br>
               © Atomik Selections
             </td>
@@ -353,6 +353,6 @@ This code is unique to you, so keep this email safe. We'll announce the launch d
 by email — keep an eye on your inbox. Until then: {{site_url}}
 
 —
-21+ · For adults only. Please enjoy responsibly and in accordance with your local laws.
+18+ · For adults only. Please enjoy responsibly and in accordance with your local laws.
 You're receiving this because you joined the list at atomikselections.com with {{email}}.
 © Atomik Selections`;
