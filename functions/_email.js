@@ -284,7 +284,7 @@ const DEFAULT_HTML = `<!doctype html>
           <tr>
             <td align="center" style="padding:0 0 28px;">
               <a href="{{site_url}}" style="text-decoration:none;">
-                <img src="{{site_url}}/assets/logo-color-1200.png" width="280" alt="Atomik Selections" style="display:block;width:280px;max-width:80%;height:auto;border:0;">
+                <img src="{{site_url}}/assets/logo-email.png" width="280" alt="Atomik Selections" style="display:block;width:280px;max-width:80%;height:auto;border:0;">
               </a>
             </td>
           </tr>
